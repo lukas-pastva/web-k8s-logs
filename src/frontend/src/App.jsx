@@ -13,6 +13,8 @@ function App() {
   const [filter, setFilter] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
   const [streaming, setStreaming] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [showEvents, setShowEvents] = useState(false);
 
   const wsRef = useRef(null);
   const logRef = useRef(null);
@@ -22,6 +24,20 @@ function App() {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  /* human-readable age */
+  const formatAge = (isoDate) => {
+    if (!isoDate) return "";
+    const diff = Date.now() - new Date(isoDate).getTime();
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    const d = Math.floor(h / 24);
+    return `${d}d`;
+  };
 
   /* fetch namespaces on mount */
   useEffect(() => {
@@ -120,12 +136,20 @@ function App() {
 
         <select value={ns} onChange={(e) => setNs(e.target.value)}>
           <option value="">-- namespace --</option>
-          {namespaces.map((n) => <option key={n} value={n}>{n}</option>)}
+          {namespaces.map((n) => (
+            <option key={n.name} value={n.name}>
+              {n.name}{n.createdAt ? ` (${formatAge(n.createdAt)})` : ""}
+            </option>
+          ))}
         </select>
 
         <select value={pod} onChange={(e) => setPod(e.target.value)}>
           <option value="">-- pod --</option>
-          {pods.map((p) => <option key={p.name} value={p.name}>{p.name} ({p.status})</option>)}
+          {pods.map((p) => (
+            <option key={p.name} value={p.name}>
+              {p.name} ({p.status}{p.createdAt ? `, ${formatAge(p.createdAt)}` : ""})
+            </option>
+          ))}
         </select>
 
         {containers.length > 1 && (
@@ -145,6 +169,22 @@ function App() {
 
         <button onClick={downloadLogs} disabled={lines.length === 0}>
           Download
+        </button>
+
+        <button
+          onClick={() => {
+            if (!ns) return;
+            setShowEvents((v) => !v);
+            if (!showEvents) {
+              const url = pod
+                ? `/api/namespaces/${encodeURIComponent(ns)}/events?pod=${encodeURIComponent(pod)}`
+                : `/api/namespaces/${encodeURIComponent(ns)}/events`;
+              fetch(url).then((r) => r.json()).then(setEvents).catch(() => setEvents([]));
+            }
+          }}
+          disabled={!ns}
+        >
+          {showEvents ? "Hide Events" : "Events"}
         </button>
 
         <button
@@ -172,6 +212,40 @@ function App() {
           Auto-scroll
         </label>
       </div>
+
+      {showEvents && (
+        <div className="events-panel">
+          <div className="events-title">Events{pod ? ` for ${pod}` : ` in ${ns}`}</div>
+          {events.length === 0 ? (
+            <div className="events-empty">No events found.</div>
+          ) : (
+            <table className="events-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Reason</th>
+                  <th>Object</th>
+                  <th>Message</th>
+                  <th>Count</th>
+                  <th>Age</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((ev, i) => (
+                  <tr key={i} className={ev.type === "Warning" ? "event-warning" : ""}>
+                    <td>{ev.type}</td>
+                    <td>{ev.reason}</td>
+                    <td>{ev.object}</td>
+                    <td>{ev.message}</td>
+                    <td>{ev.count}</td>
+                    <td>{formatAge(ev.lastSeen)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       <div className="log-viewer" ref={logRef}>
         {filtered.length === 0 ? (

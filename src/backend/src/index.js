@@ -79,11 +79,14 @@ app.get("/favicon.ico", (_q, r) => r.status(204).end());
 app.get("/api/namespaces", async (_req, res) => {
   try {
     if (cfg.k8sNamespace) {
-      return res.json([cfg.k8sNamespace]);
+      return res.json([{ name: cfg.k8sNamespace, createdAt: null }]);
     }
     const data = await k8sFetch("/api/v1/namespaces");
-    const names = (data.items || []).map((n) => n.metadata.name).sort();
-    res.json(names);
+    const items = (data.items || []).map((n) => ({
+      name: n.metadata.name,
+      createdAt: n.metadata.creationTimestamp,
+    })).sort((a, b) => a.name.localeCompare(b.name));
+    res.json(items);
   } catch (e) {
     console.error("[ns] error:", e.message);
     res.status(502).json({ error: e.message });
@@ -97,6 +100,7 @@ app.get("/api/namespaces/:ns/pods", async (req, res) => {
     const pods = (data.items || []).map((p) => ({
       name: p.metadata.name,
       status: p.status.phase,
+      createdAt: p.metadata.creationTimestamp,
       containers: (p.spec.containers || []).map((c) => c.name),
       initContainers: (p.spec.initContainers || []).map((c) => c.name),
     }));
@@ -120,6 +124,32 @@ app.get("/api/namespaces/:ns/pods/:pod/logs", async (req, res) => {
     stream.pipe(res);
   } catch (e) {
     console.error("[logs] error:", e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+/* -- Get events for namespace (optionally filtered by pod) ------ */
+app.get("/api/namespaces/:ns/events", async (req, res) => {
+  const { ns } = req.params;
+  const { pod } = req.query;
+  try {
+    let path = `/api/v1/namespaces/${encodeURIComponent(ns)}/events`;
+    if (pod) {
+      path += `?fieldSelector=involvedObject.name=${encodeURIComponent(pod)}`;
+    }
+    const data = await k8sFetch(path);
+    const events = (data.items || []).map((e) => ({
+      type: e.type,
+      reason: e.reason,
+      message: e.message,
+      object: `${e.involvedObject.kind}/${e.involvedObject.name}`,
+      count: e.count || 1,
+      firstSeen: e.firstTimestamp || e.metadata.creationTimestamp,
+      lastSeen: e.lastTimestamp || e.metadata.creationTimestamp,
+    })).sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
+    res.json(events);
+  } catch (e) {
+    console.error("[events] error:", e.message);
     res.status(502).json({ error: e.message });
   }
 });

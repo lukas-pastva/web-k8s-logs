@@ -99,6 +99,55 @@ body {
   gap: 4px;
 }
 
+/* ---- Events panel ---- */
+.events-panel {
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  font-size: 12px;
+}
+
+.events-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.events-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.events-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.events-table th,
+.events-table td {
+  text-align: left;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.events-table td:nth-child(4) {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 400px;
+}
+
+.events-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.event-warning td {
+  color: #f59e0b;
+}
+
 /* ---- Log viewer ---- */
 .log-viewer {
   flex: 1;
