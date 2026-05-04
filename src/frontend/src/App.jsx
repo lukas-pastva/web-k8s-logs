@@ -15,6 +15,7 @@ function App() {
   const [streaming, setStreaming] = useState(false);
   const [events, setEvents] = useState([]);
   const [showEvents, setShowEvents] = useState(false);
+  const [showSystem, setShowSystem] = useState(false);
 
   const wsRef = useRef(null);
   const logRef = useRef(null);
@@ -125,6 +126,11 @@ function App() {
   };
 
   /* filter */
+  const SYSTEM_NS = ["kube-system", "kube-public", "kube-node-lease"];
+  const visibleNamespaces = showSystem
+    ? namespaces
+    : namespaces.filter((n) => !SYSTEM_NS.includes(n.name));
+
   const filtered = filter
     ? lines.filter((l) => l.toLowerCase().includes(filter.toLowerCase()))
     : lines;
@@ -136,12 +142,21 @@ function App() {
 
         <select value={ns} onChange={(e) => setNs(e.target.value)}>
           <option value="">-- namespace --</option>
-          {namespaces.map((n) => (
+          {visibleNamespaces.map((n) => (
             <option key={n.name} value={n.name}>
               {n.name}{n.createdAt ? ` (${formatAge(n.createdAt)})` : ""}
             </option>
           ))}
         </select>
+
+        <label className="system-ns-toggle">
+          <input
+            type="checkbox"
+            checked={showSystem}
+            onChange={(e) => setShowSystem(e.target.checked)}
+          />
+          System
+        </label>
 
         <select value={pod} onChange={(e) => setPod(e.target.value)}>
           <option value="">-- pod --</option>
