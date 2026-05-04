@@ -1,0 +1,12 @@
+{
+  "name": "web-k8s-logs-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "dependencies": {
+    "express": "^4.19.2",
+    "helmet": "^7.0.0",
+    "ws": "^8.16.0",
+    "https-proxy-agent": "^7.0.4"
+  }
+}
